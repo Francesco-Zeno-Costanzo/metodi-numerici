@@ -1,3 +1,3 @@
 # metodi-numerici
-Raccolta dei codici per il corso di metodi numerici.
-Ogni codice relizzato con Angela Conaci
+Collection of written codes for the course of numerical methods for physics.
+Each work is in collaboration with Angela Conaci.
