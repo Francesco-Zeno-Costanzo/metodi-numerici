@@ -37,7 +37,7 @@
 		cb = (sum(Mag**4)/(sum(Mag**2)**2))*N
 
 		!calcolo errore con bootstrap, se l'ultimo parametro è 1
-		!viene caclolato anche l'errore sul cumulate di binder
+		!viene calcolato anche l'errore sul cumulate di binder
 		
    		call errore(Ene, daver_e, daver_c, dcb, 0)
    		call errore(Mag, daver_m, daver_x, dcb, 1)
