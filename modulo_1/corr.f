@@ -30,10 +30,10 @@
 	
 	do j = 1, k			!calcolo della autocorrelazione
 		c=0			!va come O(N^2); ci vuole un po'
-		do i = 1, M-K
+		do i = 1, M-j
 			c = c + (P(i) - media)*(P(i + j) - media)
 		end do
-		c = c/float(M - k)
+		c = c/float(M - j)
 		t = t + c		!caclolo tempo di correlazione integrato
 		
 		write(1, *) c
