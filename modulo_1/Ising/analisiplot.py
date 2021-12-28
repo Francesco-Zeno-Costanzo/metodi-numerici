@@ -26,7 +26,7 @@ H = 0
 B = np.zeros(len(E15))
 for i in range(len(B)):
     B[i] = 0.35 + i*(0.5-0.35)/len(B)
-	
+
 plt.figure(1)
 plt.title(f"Simulazione del modello di Ising 2D tramite Metropolis \n Campo magnetico esterno B={H}")
 plt.xlabel(r"$\beta$ [u.a.]", fontsize=15)
@@ -142,8 +142,9 @@ def FX(x, m, g, q):
     return m*x**g + q
 
 def ChiRes(y, dy, x, p, f, k=0):
-    ''' funzione per il calcolo del chi quadro e residui
-        se viene passato k uguale ad uno restituisce  i residui
+    ''' 
+    Funzione per il calcolo del chi quadro e residui
+    se viene passato k uguale ad uno restituisce  i residui
     '''
     res = (y - f(x, *p))/dy
     chisq = sum(res**2.) #chi quadro

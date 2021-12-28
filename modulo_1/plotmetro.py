@@ -15,7 +15,7 @@ errbt, bloc1=np.loadtxt('metrogausserr.txt',skiprows=0, unpack=True)
 N=len(steps)
 
 def p(x):
-    return np.exp(-((x-aver)**2)/(2*s))
+	return np.exp(-((x-aver)**2)/(2*s))
 
 
 #array per il plot e nrmalizzazione
@@ -79,5 +79,5 @@ plt.errorbar(x, errbt, fmt='o')
 plt.xticks([k for k in range(1,len(errbt)+1)])
 for i in range(len(errbt)):
 	plt.annotate("%.0e" %int(bloc1[i]), (x[i], errbt[i]))
-	
+
 plt.show()

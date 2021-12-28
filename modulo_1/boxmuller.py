@@ -8,14 +8,32 @@ s=1		#varianza della distribuzione da campionare
 m=5		#media della distribuzione da campionare
 
 def f(x):
-	return np.exp(-((x-m)**2)/(2*s))
-	
+    return np.exp(-((x-m)**2)/(2*s))
+
 #array per il plot e nomalizzazione di f
 x=np.linspace(0, 10, 10000)
 Norm=si.simps(f(x), x, dx=1/len(x), even='first' )
 
-#funzione che genera numeri casuali fra 0 ed M	
+#funzione che genera numeri casuali fra 0 ed M
 def GEN(r0, n=1, a=16807, c=0):
+    """
+    generatore conguenziale lineare
+    Parametri
+    ---------
+    r0 : int
+        seed della generazione
+    n : int, opzionale
+        dimensione array da generare, di default è 1
+    a : int, opzionale
+        moltiplicatore del generatore, di default è 16807
+    c : int, opzionale
+        incremento del generatore, di default è 0
+
+    Returns
+    ---------
+    r : array
+        array con numeri distribuiti casualmente
+    """
     if n==1:
         return np.mod(a*r0+c,M)
     else:
@@ -23,9 +41,9 @@ def GEN(r0, n=1, a=16807, c=0):
         r[0]=r0
         for i in range(1,n):
             r[i]=np.mod(a*r[i-1]+c,M)
-    return r 
+    return r
 
-#camipnamento tramite doppio cambio di variabile   
+#camipnamento tramite doppio cambio di variabile
 x1 = GEN(56, N)/M
 x2 = GEN(81, N)/M
 
@@ -44,14 +62,14 @@ K=100
 X=np.zeros((K, N))
 X[1,:]=y1
 for j in range(K):
-	for l in range(N):
-		xx=int((GEN(l)/M)*(N))
-		X[j, l]=X[1, xx]
-		
+    for l in range(N):
+        xx=int((GEN(l)/M)*(N))
+        X[j, l]=X[1, xx]
+
 h=np.array([])
 for t in range(K):
-	h=np.insert(h, len(h), np.mean(X[t, :]))
-	
+    h=np.insert(h, len(h), np.mean(X[t, :]))
+
 m2 = np.mean(h)
 dm2 = np.std(h, ddof=1)
 
