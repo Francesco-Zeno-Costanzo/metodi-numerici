@@ -2,14 +2,17 @@
 	
 	real*8, dimension(:, :), allocatable :: Y
 	real*8, dimension(:), allocatable :: aver_y, daver_y
+	real*8, dimension(:), allocatable :: y2
+	real*8 :: daver_y2
 	integer :: R
-	common N, R, K
+	common N, R
 	
 	call cpu_time(start)
 	call ranstart
 	
-	open(1, file='datiyc2.dat', status='old')
-	open(2, file='datiyc2plot.dat', status='unknown')
+	open(1, file='datiy2c.dat', status='old')
+	open(2, file='y2toy2c.dat', status='old')
+	open(3, file='datiy2cplot.dat', status='unknown')
 	
 	R = 100
 	
@@ -20,24 +23,34 @@
 	do l = 1, nret
 		
 		allocate(Y(N, K), aver_y(K), daver_y(K))
-
+		allocate(y2(N))
+		
 		do i = 1, N				!ci sono N curve per ogni eta
-			do j = 1, K			!ogni curva è lunga k
-				read(1, *) Y(i,j)	!elemnto della curva
+			do j = 1, K			!ogni curva è lunga k.
+				read(1, *) Y(i,j)	!elemento della curva
 			enddo
 		enddo
 		
 		!Y(:,i) contiene quindi tutti i primi punti delle n curve
 		!la cui media darà il primo della curva finale
 		
+		!calcolo della media di y^2 per calcolare il correlatore connesso
+		aver_y2 = 0
+		do i = 1, N		
+			read(2, *) y2(i)
+		enddo
+		aver_y2 = sum(y2)/float(N)
+		call errore(y2, daver_y2)
+		
+		!calcolo correlatore connesso
 		do i = 1, K
-			aver_y(i) = sum(Y(:,i))/float(N)
+			aver_y(i) = sum(Y(:,i))/float(N) - aver_y2**2
 			call errore(Y(:,i), daver_y(i))
 		enddo
+		daver_y = sqrt(daver_y**2 + (2*aver_y2*daver_y2)**2)
+		write(3,*) aver_y, daver_y
 		
-		write(2,*) aver_y, daver_y
-		
-		deallocate(Y, aver_y, daver_y)
+		deallocate(Y, aver_y, daver_y, y2)
 	enddo
 
 	

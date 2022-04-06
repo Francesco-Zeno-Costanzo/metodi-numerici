@@ -21,7 +21,7 @@
 	do j = 1, nret
 
 		do i = 1, N		
-			read(1, *) y2(i)!, dy2(i)
+			read(1, *) y2(i), dy2(i)
 		enddo
 		
 		

@@ -8,8 +8,9 @@
 	call ranstart
 
 	open(1, file='input.txt', status='old')		!file coi parametri
-	open(2, file='datiyc2.dat', status='unknown')	!file coi risultati
-	open(3, file='cammino.dat', status='unknown')
+	open(2, file='datiy2c.dat', status='unknown')	!file coi risultati
+	open(3, file='y2toy2c.dat', status='unknown')
+	open(4, file='cammino.dat', status='unknown')
 	
 	read(1,*) misure         !numero di misure
         read(1,*) i_dec          !decorrelazione fra una misura e l'altra
@@ -24,27 +25,28 @@ C===============================================================================
 C misu è una variabile per far scegliere che misure fare per non farle tutte insieme
 C e sprecare tempo che può assumere valori interi
 C misu = 0: viene calcolato <y^2> e <\Delta y^2>
-C misu = 1: viene calcolata la correlazione di y per calcolare poi E_1 - E_0
+C misu = 1: viene calcolata la correlazione di y   per calcolare poi E_1 - E_0
 C misu = 2: viene calcolata la correlazione di y^2 per calcolare poi E_2 - E_0
 C===================================================================================
 
 	write(2,*) misure	 !valori che seriviranno per l'analisi
 	write(2,*) nret		 !e per i plot
-	write(3,*) nret
-	write(3,*) P
+	write(4,*) nret
+	write(4,*) P
 	
 	if (misu /= 0) then	 	!se si vuole calcolare la correlazione
 		write(2,*) i_corr	!viene scritto su file anche i_corr così
 	endif				!il codice di analisi lo può leggere, ciò
 					!dovuto a come veranno stampati su file i dati
-C===================================================================================
+C=====================================================================================
 C nel caso delle correlzazioni esse vengono scitte su file ad ogni ciclo di k dove
 C k va da 1 fino a i_corr dopo aver fatto la somma dei termini fino a nlatt-k
 C quindi per ogni eta ci sono misure curve lunghe i_corr, che verrano mediate elemto
 C per elemento per ottenere la curva finale, ciò all'interno del codice analisi_corr.f
-C===================================================================================
+C=====================================================================================
 
-	i_shift = 0			!per raggiungere eta minori				
+	i_shift = 0	!per raggiungere eta minori
+				
 	do l = 1 + i_shift, nret + i_shift
 		nlatt = P*l
 		eta = 1/float(l)		 !eta = P/nlatt = 1/l
@@ -64,11 +66,15 @@ C===============================================================================
 				call metropolis(campo, nlatt, eta)   !decorrela la matrice
 			enddo
 					
-			!call misurazioni(campo, nlatt)	!misurazione delle osservabili
+			call misurazioni(campo, nlatt)	!misurazione delle osservabili
 				
 		enddo
 		
-		write(3,*) campo	!salvo un cammino per ogni eta
+		write(4,*) campo	!salvo un cammino per ogni eta
+					!evenetualmente potrebbere essere usato
+					!per rifar partire una simulazione da dove
+					!si era interotto e aumentare la statistica
+					
 		deallocate(campo)	!dealloco il cammino per poterlo riallocare
 					!con una lunghezza diversa 
 	enddo
@@ -163,7 +169,7 @@ C============================================================================
 	
 	
 	if (misu == 1) then
-		
+		!calcolo della correllazione
 		do k = 1, i_corr
 		
 			yc = 0.0
@@ -178,25 +184,28 @@ C============================================================================
 	endif
 	
 	if (misu == 2) then
-		y2 = 0.0
-		
-		do i = 1, nlatt
-			y2 = y2 + campo(i)**2
-		enddo                             
-			
-		y2 = y2/float(nlatt)
-		
+		!calcolo della correlazione
 		do k = 1, i_corr
 		
 			yc = 0.0
 			do i = 1, nlatt-k
-				yc = yc + (campo(i)**2)*(campo(i+k)**2)
+				yc = yc + (campo(i)*campo(i+k))**2
 			enddo
 			
 			yc = yc/float(nlatt-k)
-			yc = yc - y2**2
 			write(2,*) yc 	
-		enddo		
+		enddo
+		
+		!calcolo del valore medio di y^2 che servira poi per calcolare
+		!la funzione di correlazione connessa, calcolo eseguito nel
+		!codice analisi_corr.f
+		y2 = 0.0
+		do j = 1, nlatt
+			y2 = y2 + campo(j)**2
+		enddo                             
+			
+		y2 = y2/float(nlatt)
+		write(3,*) y2	
 	endif
 	
 	return

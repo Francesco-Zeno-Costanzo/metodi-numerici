@@ -87,14 +87,16 @@ plt.grid()
 
 for j in range(W):
     
-    y = a[j, 0:K]/a[j, 0]
+    y = a[j, 0:K]
     dy = a[j, K:] 
     
     plt.errorbar(x, y, dy, fmt='.', ecolor=colors[j], label=fr'$\eta$ = {eta[j]:.2f}')
     plt.legend(loc='best')
    
-	
     pars, covm = curve_fit(f, x, y, sigma=dy)
+    chisq = sum(((y - f(x, *pars))/dy)**2.)
+    ndof = len(y) - len(pars)
+    print('chi quadro = %.3f (%d dof)' % (chisq, ndof))
     
     t = np.linspace(np.min(x), np.max(x), 1000)
     plt.plot(t, f(t, *pars), color=colors[j])
@@ -181,7 +183,7 @@ plt.figure(5)
 plt.hist(f, bins=20, density=True)
 
 x=np.linspace(-2,2, 10000)
-plt.plot(x, G(x, 0))
+plt.plot(x, abs(G(x, 0))**2)
 plt.grid()
 
 
@@ -192,7 +194,7 @@ W = len(a[:,0])
 e = np.zeros(W)
 de = np.zeros(W)
 x = np.linspace(0, K-1, K)
-eta = np.array([1/i for i in range(1+5, W+1+5)])
+eta = np.array([1/i for i in range(1, W+1)])
 
 colors = plt.cm.jet(np.linspace(0, 1, W))
 
@@ -206,14 +208,16 @@ plt.grid()
  
 for j in range(W):
     
-    y = a[j, 0:K]/a[j, 0]
+    y = a[j, 0:K]
     dy = a[j, K:] 
     
     plt.errorbar(x, y, dy, fmt='.', ecolor=colors[j], label=fr'$\eta$ = {eta[j]:.2f}')
     plt.legend(loc='best')
-   
 	
     pars, covm = curve_fit(f, x, y, sigma=dy)
+    chisq = sum(((y - f(x, *pars))/dy)**2.)
+    ndof = len(y) - len(pars)
+    print('chi quadro = %.3f (%d dof)' % (chisq, ndof))
     
     t = np.linspace(np.min(x), np.max(x), 1000)
     plt.plot(t, f(t, *pars), color=colors[j])
