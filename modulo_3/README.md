@@ -6,4 +6,5 @@ The expression of the mean value of O has a probabilistic interpretation that wi
 
 <img src="http://latex.codecogs.com/svg.latex?P[x(\tau)]&space;=&space;\frac{\exp\Biggl(&space;\frac{-S_E[x(\tau)]}{\hbar}&space;\Biggr)}{\int&space;\mathcal{D}x(\tau)&space;\exp\Biggl(&space;\frac{-S_E[x(\tau)]}{\hbar}&space;\Biggr)}" title="http://latex.codecogs.com/svg.latex?P[x(\tau)] = \frac{\exp\Biggl( \frac{-S_E[x(\tau)]}{\hbar} \Biggr)}{\int \mathcal{D}x(\tau) \exp\Biggl( \frac{-S_E[x(\tau)]}{\hbar} \Biggr)}" />
 
+The simulated system is the harmonic oscillator
 
