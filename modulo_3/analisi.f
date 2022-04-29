@@ -9,8 +9,8 @@
 	call cpu_time(start)
 	call ranstart
 	
-	open(1, file='datiy2.dat', status='old')
-	open(2, file='datiy2plot.dat', status='unknown')
+	open(1, file='datieneU.dat', status='old')
+	open(2, file='datieneUplot.dat', status='unknown')
 	
 	
 	R = 100

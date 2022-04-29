@@ -10,17 +10,22 @@
 	call cpu_time(start)
 	call ranstart
 	
-	open(1, file='datiy2c.dat', status='old')
-	open(2, file='y2toy2c.dat', status='old')
-	open(3, file='datiy2cplot.dat', status='unknown')
+	open(1, file='adatiy2c.dat', status='old')
+	open(2, file='ay2toy2c.dat', status='old')
+	open(3, file='adatiy2cplot.dat', status='unknown')
 	
 	R = 100
 	
 	read(1, *) N
 	read(1, *) nret
-	read(1, *) K
+	read(1, *) P
+	read(1, *) i_shift
 	
 	do l = 1, nret
+		!dato che le simulazioni sono fatte a N*eta costante
+		!la lungezza dei vettori a vari eta cambia ed è quindi
+		!necessario leggere un correlazione per volta 
+		K = P*(l + i_shift)/2 !lunghezza correlazione per ogni cammino
 		
 		allocate(Y(N, K), aver_y(K), daver_y(K))
 		allocate(y2(N))
