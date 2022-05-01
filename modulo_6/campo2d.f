@@ -10,38 +10,38 @@ C===============================================================
       call cpu_time(start)
       call ranstart
       
-      open(1,file='input.txt',status='old')
-      open(2,file='dati/14mo.dat',status='unknown')
+      open(1,file='input.txt',status='old')		!file di input
+      open(2,file='dati/14mo.dat',status='unknown')	!file con i risultati
 
-      read(1,*) N
-      read(1,*) M
-      read(1,*) i_dec      
-      read(1,*) massa
+      read(1,*) N	!misure che veranno tenute
+      read(1,*) M	!dati scartati per la termalizzazione
+      read(1,*) i_dec   !decorrelazione fra una misura e l'altra
+      read(1,*) massa	!massa particella
       
-      misure = N + M
+      misure = N + M	!misure totali da eseguire
       
-      write(2,*) misure 
+      write(2,*) misure !scrivo su file cosa sevirà per l'analisi
       write(2,*) M
       write(2,*) nx, nt
       
-      
+      !quantita ricorrenti
       massa2 = massa**2
-      massa2p4 = massa**2 + 4.0 !ricorrente
+      massa2p4 = massa**2 + 4.0
       
-      call bordi()
-      call init()
+      call bordi()	!condizioni periodiche al bordo
+      call init()	!inizializzo il cammino
 
-      do iter = 1, misure
-          do j = 1, i_dec
-              call heatbath()
-              call overrelax()
-              call overrelax()
+      do iter = 1, misure	!ciclo misure
+          do j = 1, i_dec	!ciclo per decorrellare
+              call heatbath()	!algoritmo di simulazione
+              call overrelax()	!chiamo 4 volte overrelax
+              call overrelax()	!per migliorare la simulazione
               call overrelax()
               call overrelax()
           enddo
 
 
-          call misurazioni(fm2, ds2, dt2)
+          call misurazioni(fm2, ds2, dt2)	!misura delle osservabili
           write(2,*) fm2, ds2, dt2
 
       enddo 
@@ -60,15 +60,15 @@ C============================================================================
       include "par2d.f"
       
       integer, dimension(2) :: c
-      c = (/ nx, nt /)
+      c = (/ nx, nt /)	!array delle estensioni spaziali e temorali
       
       do j = 1, 2
           do i = 1, c(j)
-              nl(i, j) = i + 1
+              nl(i, j) = i + 1		!primi vicini
               ns(i, j) = i - 1
           enddo
-          nl(c(j), j) = 1
-          ns(1, j) = c(j)
+          nl(c(j), j) = 1		!aggiusto i bordi
+          ns(1, j) = c(j)		!con condizioni periodiche
       enddo
       
       return
@@ -79,7 +79,7 @@ c=================================================================
       subroutine init()
       
       include "par2d.f"
-      	
+      !iniazializzazione random della matrice fra -1 e 1
       do i_x = 1, nx
           do i_t = 1, nt
               x = ran2()
@@ -97,16 +97,16 @@ C==================================================================
       
       pi = 4.0*ATAN(1.0) ! pigreco
       
-      do i_x = 1, nx
-          do i_t = 1, nt
-              f = 0.0 
-              phi = campo(i_x, i_t)
-              f = campo(nl(i_x, 1), i_t)+
+      do i_x = 1, nx				!ciclo su tutta
+          do i_t = 1, nt			!la matrice
+          
+              f = 0.0 				!inizializzo il campo medio
+              f = campo(nl(i_x, 1), i_t)+	!sommo sui primi vicini
      &            campo(ns(i_x, 1), i_t)+
      &            campo(i_x, nl(i_t, 2))+
      &            campo(i_x, ns(i_t, 2))                
 
-
+	      !campionamento con boxmuller
               sigma2 = 1.0/massa2p4
               aver = f*sigma2
 
@@ -128,17 +128,20 @@ C==================================================================
       
       include "par2d.f"
       
-      do i_x = 1, nx
-          do i_t = 1, nt
-              f = 0.0 
-              phi = campo(i_x, i_t)
-              f = campo(nl(i_x, 1), i_t)+
+      do i_x = 1, nx				!ciclo su tutta 
+          do i_t = 1, nt			!la matrice
+          
+              f = 0.0 				!inizializzo il campo medio
+              phi = campo(i_x, i_t)		!valore del campo
+              f = campo(nl(i_x, 1), i_t)+	!sommo sui primi vicini
      &            campo(ns(i_x, 1), i_t)+
      &            campo(i_x, nl(i_t, 2))+
      &            campo(i_x, ns(i_t, 2))             
 
               aver = f/massa2p4
-                 
+              !sposto il valore del campo data la simmetria della gaussiana
+              !rispetto al valor medio quindi non ho variazione nell'azione
+              !per cui l'algorimo ha accetanza 1  
               campo(i_x, i_t) = 2.0*aver - phi
               
           enddo
@@ -154,22 +157,24 @@ c=================================================================
       
       include "par2d.f"
 
-      fm2 = 0.0
+      fm2 = 0.0	!inizalizzo le quantità da misurarre
       ds2 = 0.0
       dt2 = 0.0
-      do i_x = 1, nx
-          do i_t = 1, nt
-              phi = campo(i_x, i_t)
-              f_s = campo(nl(i_x,1), i_t)
-              f_t = campo(i_x, nl(i_t,2))
+      
+      do i_x = 1, nx				!ciclo su tutta
+          do i_t = 1, nt			!la matrice
+          
+              phi = campo(i_x, i_t) 		!valore del campo
+              f_s = campo(nl(i_x,1), i_t)	!vicino spaziale
+              f_t = campo(i_x, nl(i_t,2))	!vicino temporale
 
-              fm2 = fm2 + massa2*phi**2 
-              ds2 = ds2 - 2.0*phi*f_s  + 2.0*phi**2
-              dt2 = dt2 - 2.0*phi*f_t  + 2.0*phi**2
+              fm2 = fm2 + massa2*phi**2 		!misura delle osservabili
+              ds2 = ds2 - 2.0*phi*f_s  + 2.0*phi**2	!sono i termini che compaiono
+              dt2 = dt2 - 2.0*phi*f_t  + 2.0*phi**2	!nell'azione
           enddo
       enddo
 
-      fm2 = fm2/float(nvol)
+      fm2 = fm2/float(nvol)	!prendo le densità
       ds2 = ds2/float(nvol)
       dt2 = dt2/float(nvol)
 

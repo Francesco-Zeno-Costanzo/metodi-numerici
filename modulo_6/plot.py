@@ -37,9 +37,11 @@ plt.plot(k, np.pi/6*o, label='valore asintotico')
 plt.legend(loc='best')
 plt.grid()
 
-
-## Limite continuo
-
+"""
+##====================================================================================
+"""
+## LIMITE AL CONTINUO
+## OVER-RELAXATION
 nt, eco, deco = np.loadtxt('densm.dat', unpack=True)
 
 dens1 = 0.5*nt**2*eco
@@ -51,6 +53,8 @@ y = dens1[2:]
 dy = d_dens1[2:]
 
 def f(x, a, b):
+    '''funzione di fit
+    '''
     return a + b*x**2
     
 
@@ -108,6 +112,9 @@ plt.xlabel('massa',fontsize=10)
 plt.plot(t, 0*t, color='red', linestyle='--', alpha=0.5) #grafico la retta costantemente zero
 plt.plot(x, ff, '.', color='black') #grafico i residui normalizzati
 plt.grid()
+
+##=============================
+## SENZA OVER-RELAXATION
 
 nt, eno, deno = np.loadtxt('densmo.dat', unpack=True)
 
@@ -175,7 +182,9 @@ plt.plot(t, 0*t, color='red', linestyle='--', alpha=0.5) #grafico la retta costa
 plt.plot(x, ff, '.', color='black') #grafico i residui normalizzati
 plt.grid()
 
-
+"""
+##=========================================================================================
+"""
 ##Metodo dell'anomalia di traccia
 
 nt, o1, o2, o3, do1, do2, do3 = np.loadtxt('misure.dat', unpack=True)
@@ -192,23 +201,38 @@ tra = nt**2*(o1 - o1[-1])
 dtra = nt**2*np.sqrt(do1**2 + do1[-1]**2)
 
 def errore(x, y, dy):
-    P = np.zeros((len(x), 100))
-    for i in range(100):
+    '''
+    La funzione esegue un boostrap ricampionando la curva
+    estrando un nuovo punto con una distibuzione gaussiana
+    centrata nel valore centrale del punto e con deviazione
+    standard l'errore sul punto; la curva viene interpolata
+    e se calcola l'integrale, l'errore sarà deviazione standard
+    dei vari integrali calcolati
+    '''
+    N = 100 # numero ricampionamenti
+    P = np.zeros((len(x), N))
+    for i in range(N):
         T = x
         m = y
         s = dy
+        #estrazione con box-muller
         phi = 2*np.pi*np.random.rand(len(T))
         z = -np.log(1-np.random.rand(len(T)))
         inte = np.sqrt(2*z*s**2)*np.cos(phi) + m
-    
-        s3 = InterpolatedUnivariateSpline(T, inte, k=2)
-        pr = np.array([s3.integral(T[0], i) for i in T])
+        #interpolazione e calolo dell'integrale
+        s2 = InterpolatedUnivariateSpline(T, inte, k=2)
+        pr = np.array([s2.integral(T[0], i) for i in T])
         P[:, i] = pr
     
     err = np.std(P, ddof=1, axis=1)
     return err
 
 def pressione(x, y, z, dy):
+    '''
+    la funzion esegue il calcolo dell'integrale dell'anomalia
+    di traccia intermpolando l'integranda con un polinomio di
+    grado due e poi calcolando l'integrale vero e proprio
+    '''
     T = x[::-1]
     nt = z[::-1]
     tra = y[::-1]
@@ -217,20 +241,21 @@ def pressione(x, y, z, dy):
     inte = tra*massa*nt
     dinte = dtra*massa*nt
     
-    s3 = InterpolatedUnivariateSpline(T, inte, k=2)
-    pr = np.array([s3.integral(T[0], i) for i in T])
+    s2 = InterpolatedUnivariateSpline(T, inte, k=2)
+    pr = np.array([s2.integral(T[0], i) for i in T])
     err = errore(T, inte, dinte)
     
     pres = pr[::-1]
     inte = inte[::-1]
     dint = dinte[::-1]
     perr = err[::-1]
-    return pres, inte, perr, dint
+    return pres, inte, perr, dint, s2
 
-press, inte, dpress, dinte = pressione(T, tra, nt, dtra)
+press, inte, dpress, dinte, spline = pressione(T, tra, nt, dtra)
 dens2 = tra + press
 ddens2 = np.sqrt(dtra**2 + dpress**2)
 
+t = np.linspace(np.min(T), np.max(T), 1000)
 plt.figure(4)
 plt.suptitle("Metodo dell'anomalia di traccia")
 plt.subplot(211)
@@ -238,6 +263,7 @@ plt.title('Traccia e pressione')
 plt.errorbar(T, tra, dtra, fmt='.', color='b')
 plt.errorbar(T, inte, dinte, fmt='*', color='k')
 plt.errorbar(T, press, dpress, fmt='^', color='r')
+plt.plot(t, spline(t), 'y')
 plt.grid()
 
 plt.subplot(212)

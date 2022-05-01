@@ -9,25 +9,31 @@
 	
       call cpu_time(start)
       call ranstart
-C===================================================================
-C Il codice è implementato per leggere P file da una cartella 'dati'
-C labellati da un numero e queste informazini devono essere scritte
-C nel file analisi_parm.txt
-C===================================================================    
+      
+C=======================================================================
+C I file sono labellati da un'indice intero che però può cambiare nei
+C modi più disparati per come è stato pensato il codice, sarebbe il 
+C valore edll'estensione temporale del campo, quindi gli indiici vengono
+C letti da un file sul quale vanno scritti a mano
+C=======================================================================
       open(unit=0, file='analisi_parm.txt', status="unknown")
-      read(0,*) P
-      allocate(cp(P))
+      
+      read(0,*) P 	!la prima riga del file 
+      allocate(cp(P))	!contiene il numero di reticoli
+      
       do j = 1, P
           read(0, *) cp(j)
       enddo
       
+      !dove veranno scritte le misure
       open(unit=20, file="misure.dat", status="unknown")
       open(unit=21, file="densm.dat", status="unknown")
       
-      R = 200
+      R = 200 !ricampinamenti
       
       do j = 1, P
           
+          !cambio il nome del file a seconda di quale deve essere letto
           if (cp(j) < 10) then
               formatstring = "(A5,i1,A4)"
           else if ((cp(j)>=10).AND.(cp(j) < 100)) then
@@ -38,26 +44,32 @@ C===================================================================
           
           write(file_name, formatstring) "dati/",cp(j),".dat"
           
-          open(1, file=file_name, status="unknown")
+          open(1, file=file_name, status="unknown") !apro il file
           
-          read(1, *) N
-          read(1, *) M
-          read(1, *) nx, nt
+          read(1, *) N		!misure totali
+          read(1, *) M		!misuure da scartare
+          read(1, *) nx, nt	!estensioni spaziale e temporale
       
      
           allocate(fm2(N), ds2(N), dt2(N), dens(N-M)) 
       
           do i = 1, N
-              read(1, *) fm2(i), ds2(i), dt2(i)				
+              read(1, *) fm2(i), ds2(i), dt2(i)	 !leggo i dati			
           enddo
           
-	  dens = fm2(M:) + ds2(M:) - dt2(M:)
+          !più conventiete calcolare prima questa quantità e poi
+          !il suo vaor medio ed errore associato piuttosto che
+          !calcolare i singoli valor medi ed errori per poi propagare
+          !questi ultimi
+	  dens = fm2(M:) + ds2(M:) - dt2(M:) 
 	  
+	  !calcolo valor medi
           a = sum(fm2(M:))/float(N-M)
           b = sum(ds2(M:))/float(N-M)
           c = sum(dt2(M:))/float(N-M)
           d = sum(dens)/float(N-M)
           
+          !calcolo erroi
           call errore(fm2(M:), dfm2)
           call errore(ds2(M:), dds2)
           call errore(dt2(M:), ddt2)
