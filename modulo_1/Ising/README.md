@@ -22,4 +22,4 @@ another important value that will be calculated is the binder cumulant, the kurt
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=U=\frac{<m^4>}{<m^2>^2}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?U=\frac{<m^4>}{<m^2>^2}" title="U=\frac{<m^4>}{<m^2>^2}" /></a>
 
-More information can be found in the pdf of the final report. Also in the montecarlo repository you can find a code for the simulation of ising written in C.
+More information can be found in the pdf of the final report. Also in ISING repository you can find a code for the simulation of ising written in C.
