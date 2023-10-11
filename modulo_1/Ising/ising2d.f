@@ -1,47 +1,62 @@
 	program ising
-	parameter (nlatt=50, nvol=nlatt**2)
-	integer campo
-	common/reticolo/campo(nlatt, nlatt)
-	common/vario/bext
+	
+	include "par.f"
+C===============================================================
+C file che permette di cambiare più facilmente i parametri della
+C simulazione facendolo una sola volta piuttosto che diverse
+C volte all'interno del codice 
+C===============================================================
+      
+      character :: cr    ! for percentage loading
+      cr = char(13) 
 	
 	call cpu_time(start)
 	call ranstart
 
-	open(1, file='input.txt',status='old')		!file coi parametri
-	open(2, file='dati50.dat',status='unknown')	!file coi risultati
+	open(1, file='input.txt',status='old')		!file con i parametri
+	open(2, file='dati/20.dat',status='unknown')	!file con i risultati
 	
 	read(1,*) misure         !numero di misure
-        read(1,*) i_dec          !updating fra una misura e l'altra
-        read(1,*) bext      	 !valore del campo esterno
-        read(1,*) bmin 		 !temperatura inversa minima
-        read(1,*) bmax		 !temperatura inversa missima
-        read(1,*) npassi	 !numero di temperature
+      read(1,*) i_dec          !updating fra una misura e l'altra
+      read(1,*) bext      	 !valore del campo esterno
+      read(1,*) bmin 		 !temperatura inversa minima
+      read(1,*) bmax		 !temperatura inversa missima
+      read(1,*) npassi	       !numero di temperature
        
 	write(2, *) misure	 !scrivo quantità che seriviranno
-	write(2, *) nvol	 !nell'analisi
+	write(2, *) nvol	       !nell'analisi
 	write(2, *) npassi
 	
 	call bordi()		 !condizioni di bordo continuo
-	call init()		 !inizializzo la matrice
+	call init()		       !inizializzo la matrice
 	
 	!la scrittura avviene su un unico file che poi verra letto a blocchi
 	!ogni blocco corrisponde ad una temperatura diversa
 	!ci sono npassi blocchi, ciascuno lungo misure
 	
 	do k=1, npassi		 !ciclo sulle temperature
-	
-		beta = bmin + (k)*(bmax-bmin)/float(npassi)
+	  
+	    write(*, '(A1)', advance='no')  cr !I write cr needed to clean the shell
+	  
+	    beta = bmin + (k-1)*(bmax-bmin)/float(npassi-1)
+	    print*, beta
 		
-		do i=1, misure 	!ciclo sulle misure a fissa temperatura
+	    do i=1, misure 	!ciclo sulle misure a fissa temperatura
 		
-			do j=1, i_dec
-				call metropolis(beta)   !decorrela la matrice
-			enddo
+		  do j=1, i_dec
+			call metropolis(beta)   !decorrela la matrice
+		  enddo
 			
-			call magnetizzazione(mag)	!misurazione delle osservabili
-			call energia(ene)
-			write(2,*) abs(mag), ene	!salvataggio risultati
-		enddo
+		  call magnetizzazione(xmag)	!misurazione delle osservabili
+		  call energia(ene)
+		  write(2,*) xmag, ene	      !salvataggio risultati
+	    enddo
+	    
+	    !percentage loading
+          perc = k/float(npassi)*100
+          write(*,'(f8.1, a2)', advance='NO') perc, " %"
+          flush(6)
+          
 	enddo
 	
 	call ranfinish
@@ -52,119 +67,123 @@
 	end program ising
 
 C============================================================================
+C Condizioni al bordo
+C============================================================================
 
 	subroutine bordi() 		
 	   
-	parameter (nlatt = 50,nvol = nlatt**2)
-      	common/passi/nl(nlatt),ns(nlatt)
+	include "par.f"
       	
-      	do i =1, nlatt
-      		nl(i) = i + 1		!codizioni per ogni sito
-      		ns(i) = i - 1 
-      	enddo 
-      	nl(nlatt) = 1			!condizioni periodiche per i siti esterni
-      	ns(1) = nlatt
+     	do i =1, nlatt
+          nl(i) = i + 1		!codizioni per ogni sito
+     	    ns(i) = i - 1 
+      enddo 
+     	
+     	nl(nlatt) = 1		!condizioni periodiche per i siti esterni
+     	ns(1) = nlatt
       	
-      	return
-      	end
+     	return
+     	end
  
 C============================================================================
+C Inizzializzazione del reticolo
+C============================================================================
+     	
+      subroutine init()
       	
-      	subroutine init()
+     	include "par.f"
       	
-      	parameter (nlatt = 50,nvol = nlatt**2)
-      	common/reticolo/campo(nlatt, nlatt)
-      	
-      	do i=1, nlatt
-      		do j=1, nlatt
-      			x=ran2()
-      			if(x<0.5) then
-      				campo(i,j) = 1
-      			else
-      				campo(i,j) = -1
-      			endif
-      		enddo
-      	enddo
-      	return
-      	end
+     	do i=1, nlatt
+     	    do j=1, nlatt
+     	        x=ran2()
+     		  if(x<0.5) then
+     			campo(i,j) = 1
+      	  else
+      		campo(i,j) = -1
+      	  endif
+     	    enddo
+     	enddo
+      return
+     	end
 
 C============================================================================
-
+C update con metropolis
+C============================================================================
 	subroutine metropolis(beta)
 	
-	parameter (nlatt = 50,nvol = nlatt**2)
-	common/reticolo/campo(nlatt, nlatt)
-	common/passi/nl(nlatt),ns(nlatt)
-	common/vario/bext
+	include "par.f"
 	
-	do iv = 1, nvol				!ciclo su tutti i siti
+	do i = 1, nlatt				!ciclo su tutti i siti
+	    do j = 1, nlatt
 		
-		i = int(nlatt*ran2()+1.0)	!scelta random di un sito
-		j = int(nlatt*ran2()+1.0)
+	        ip = nl(i)			!calcolo dei primi vicini
+	        im = ns(i)
+	        jp = nl(j)
+	        jm = ns(j)
 		
-		ip = nl(i)			!calcolo dei primi vicini
-		im = ns(i)
-		jp = nl(j)
-		jm = ns(j)
-		
-		F = campo(i, jp) + campo(i, jm) + 
-     & 		    campo(ip, j) + campo(im, j)	!sommo i primi vicini
-     		F = beta*(F + bext)		!aggiungo eventuale campo esterno
+	        F = campo(i, jp) + campo(i, jm) + 
+     & 	      campo(ip, j) + campo(im, j)	!sommo i primi vicini
+     	        F = beta*(F + bext)		      !aggiungo eventuale campo esterno
      		
-     		ispin = campo(i, j)
+     	        ispin = campo(i, j)
      		
-     		p =  exp(-2.0*ispin*F)		!probabilità di accettare la mossa
+     	        p =  exp(-2.0*ispin*F)	!probabilità di accettare la mossa
      		
-     		x = ran2()			!numero casuale per il test
+     	        x = ran2()			!numero casuale per il test
      		
-     		if(x < p) then			!test di accettanza
-     			campo(i, j) = -ispin	!se F è negativo il test è
-     		endif				!passato di Default
-	
+     	        if(x < p) then			!test di accettanza
+     		      campo(i, j) = -ispin	!se F è negativo il test è
+     	        endif				!passato di Default
+	    enddo
 	enddo
 	return
 	end
 	
 
 C============================================================================
+C Calcolo della magnetizzazione
+C============================================================================
 
-	subroutine magnetizzazione(mag)
+	subroutine magnetizzazione(xmag)
 	
-	parameter (nlatt = 50,nvol = nlatt**2)
-	common/reticolo/campo(nlatt, nlatt)
+      include "par.f"
 	
-	mag = 0					!inzializzo la variabile
+	xmag = 0					!inzializzo la variabile
 	do i=1, nlatt				!ciclo su tutto il reticolo
-		do j=1, nlatt			!e sommo ogni sito
-			mag = mag + campo(i, j)
-		enddo
+	    do j=1, nlatt			      !e sommo ogni sito
+	        xmag = xmag + campo(i, j)
+	    enddo
 	enddo
+
+	xmag = xmag/float(nvol)
+
 	return
 	end
 
+C============================================================================
+C Calcolo dell'energia
 C============================================================================
 
 	subroutine energia(ene)
 	
-	parameter (nlatt = 50,nvol = nlatt**2)
-	common/reticolo/campo(nlatt, nlatt)
-	common/passi/nl(nlatt),ns(nlatt)
-	common/vario/bext
-	
-	ene=0					!inzializzo la variabile
-	do i = 1, nlatt				!ciclo su tutto il reticolo
-		do j =1, nlatt
-			ip = nl(i)		!calcolo primi vicini
-			im = ns(i)		
-			jp = nl(j)
-			jm = ns(j)
+     	include "par.f"
+     	
+	ene = 0			!inzializzo la variabile
+	do i = 1, nlatt		!ciclo su tutto il reticolo
+	    do j =1, nlatt
+	      ip = nl(i)		!calcolo primi vicini
+		im = ns(i)		
+		jp = nl(j)
+		jm = ns(j)
 			
-			F = campo(i, jp) + campo(i, jm) + 
-     & 		    	    campo(ip, j) + campo(im, j)
-     			ene = ene - 0.5*F*campo(i, j)	!0.5 per non sovracontare
-     			ene = ene - bext*campo(i, j)	!eventuale campo esterno
-		enddo
+		F = campo(i, jp) + campo(i, jm) + 
+     & 	    campo(ip, j) + campo(im, j)
+     		ene = ene - 0.5*F*campo(i, j)	!0.5 per non sovracontare
+     		ene = ene - bext*campo(i, j)	!eventuale campo esterno
+	    enddo
 	enddo
+	
+	ene = ene/float(nvol)
 	
 	return
 	end
