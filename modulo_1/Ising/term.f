@@ -4,46 +4,53 @@
 	real*8:: daver_e, daver_m, daver_c, daver_x, dcb
 	real*8:: aver_e, aver_m, aver_c, aver_x, cb
 	integer :: R
+	integer(16) :: Db 
+	
 	common N, R, nvol
 	call cpu_time(start)
 	call ranstart
 	
 	!apro file da cui leggere i dati da analizzare e file su
 	!cui scrivere i risultati con relativi errori
-	open(unit=0, file="dati50.dat", status="old", action="read")
-	open(unit=2, file='datiplot50.dat',status='unknown')
+	open(unit=0, file="dati/20.dat", status="old", action="read")
+	open(unit=2, file='datiplot/20.dat',status='unknown')
 	
-	R=100				!numero di ricampionamenti
+	R  = 100				!numero di ricampionamenti
+	Db = 1000                     ! dimesione dei blocchi
 	read(0, *) N			!leggo i primi valori che sono 
 	read(0, *) nvol			!necessari per l'analisi
 	read(0, *) npassi
 	
 	allocate(Ene(N), Mag(N))
 
-	do j=1, npassi			!leggo a blocchi il file
-		do i = 1, N		!ogni blocco una temperatura diversa
+	do j=1, npassi		!leggo a blocchi il file
+	    do i = 1, N		!ogni blocco una temperatura diversa
 		
-			read(0, *) Mag(i), Ene(i)
-		enddo
-		aver_e = sum(Ene)/float(N*nvol) 	!Energia media
-		aver_m = sum(Mag)/float(N*nvol)		!magnetizzazione media
+		  read(0, *) xmag, Ene(i)
+		  Mag(i) = abs(xmag)
+	    enddo
+	    aver_e = sum(Ene)/float(N) 	!Energia media
+	    aver_m = sum(Mag)/float(N)	!magnetizzazione media
 		
-		c = (sum(Ene**2)/float(N) - (sum(Ene)/float(N))**2)
-		x = (sum(Mag**2)/float(N) - (sum(Mag)/float(N))**2)
+	    aver_c = (sum(Ene**2)/float(N) - (sum(Ene)/float(N))**2) !calore specifico medio
+	    aver_x = (sum(Mag**2)/float(N) - (sum(Mag)/float(N))**2) ! suscettività media
+	    
+	    aver_c = aver_c*nvol
+	    aver_x = aver_x*nvol
 		
-		aver_c = c/float(nvol)			!calore specifico medio
-		aver_x = x/float(nvol)			!suscettività media
-		
-		cb = (sum(Mag**4)/(sum(Mag**2)**2))*N
+	    cb = (sum(Mag**4)/(sum(Mag**2)**2))*N ! N perchè ho N^2/N con le medie
 
-		!calcolo errore con bootstrap, se l'ultimo parametro è 1
-		!viene calcolato anche l'errore sul cumulate di binder
+	    !calcolo errore con bootstrap, se l'ultimo parametro è 1
+	    !viene calcolato anche l'errore sul cumulate di binder
 		
-   		call errore(Ene, daver_e, daver_c, dcb, 0)
-   		call errore(Mag, daver_m, daver_x, dcb, 1)
+   	    call bootstrap(N, Ene, daver_e, 0, R, nvol, Db)
+   	    call bootstrap(N, Ene, daver_c, 1, R, nvol, Db)
+   	    call bootstrap(N, Mag, daver_m, 0, R, nvol, Db)
+   	    call bootstrap(N, Mag, daver_x, 1, R, nvol, Db)
+   	    call bootstrap(N, Mag, dcb    , 2, R, nvol, Db)
 
-    		write(2,*) aver_e, aver_m, aver_c, aver_x, cb,	!salvo su file
-     &			   daver_e, daver_m, daver_c, daver_x, dcb
+    	    write(2,*) aver_e, aver_m, aver_c, aver_x, cb,	!salvo su file
+     &	    daver_e, daver_m, daver_c, daver_x, dcb
 		
 	enddo
 	
@@ -52,73 +59,87 @@
 	call cpu_time(finish)
 	print '("tempo di esecuzione= ", f8.4," secondi.")', finish-start
 	
-	call execute_command_line("python3 isingplot.py")
-	
 	end program analisi
-	
+
+C=============================================================================
+C Bootstrap
 C=============================================================================
 
-	subroutine errore(x, dx, dx1, db, B)
-	common N, R, nvol
-	real*8, dimension(:), allocatable :: z, u, a, q
-	real*8, dimension(N) :: x
-	integer(16) :: nb, Dd, i, j, l
-	real*8 :: media_x, media_dx, dx, dx1, media_b, db
-	integer :: g, R, B
+	subroutine bootstrap(N, x, dx, ics, R, nvol, Db)
+C=============================================================================
+C     Subroutine for calculating errors using binned bootstrap
+C     
+C     Parameters
+C     N : int
+C         size of data, length(x)
+C     x : one dimensional array of  length(x) = N
+C         data, markov chain
+C     dx : float
+C         variable to which the error will be written
+C     ics : int
+C         flag if 0 compute error on mean, if 1 compute error on variance
+C         if 2 compute error on binder cumulant
+C     R : int
+C         number of resampling
+C     nvol : float
+C         volume of lattice
+C     Db : int
+C         seize of the blocks
+C=============================================================================
+	real*8, dimension(:), allocatable :: z, a   ! axuliar array
+	real*8, dimension(N) :: x                   ! initial array
+	integer(16) :: nb, Db, i, j, l              ! parameter and indices
+	real*8 :: media_x, dx                       ! final results
+	integer :: g, R, ics                        ! others, pamaters
 	
-	allocate(z(N), u(R), a(R))
-	if(B==1) then
-		allocate(q(R))
-	endif
-	!il calcolo dell'errore avviene tramite il binned bootstrap poichè
-	!a priori non si può sapere qual è il tempo di decorellazione migliore
-	!da inserire nella simulazione, e per non sprecare tempo macchina,
-	!bisogna tenere conto di una possibile correlazione frai i dati
+	allocate(z(N), a(R))
 	
-    	Dd = 2**10			!dimensione dei blocchi	
-	nb=N/Dd				!numero dei blocchi
-	do l =1, R			!ciclo sui ricampionamenti
-		do i = 1, nb
+	! The calculation of the error is done through the binned bootstrap since
+      ! it is not possible to know a priori which is the best decorellation time
+      ! to insert in the simulation, and in order not to waste machine time,
+      ! a possible correlation between the data must be taken into account
+	
+	nb = N/Db		      ! number of blocks
+	
+	do l = 1, R			! loop of resampling
+	
+	    do i = 1, nb
+		  j = int(ran2()*N +1) ! I choose site at random
+		  do g = 1, Db		 	
+			z((i-1)*Db+g) = x(mod(j+g-2,N)+1) ! block's resampling	
+		  enddo	
+	    enddo
 		
-			j = int(ran2()*N +1) !scelgo sito a caso
-			do g= 1, Dd		 	
-				z((i-1)*Dd+g) = x(mod(j+g-2,N)+1) !ricampiono a blocchi	
-			enddo
-			
-		enddo
-		
-		!calcolo della media e della varianza dei ricampionamenti
-		
-		a(l) = sum(z)/float(N*nvol)
-		u(l) = (sum(z**2)/float(N) - (sum(z)/float(N))**2)/float(nvol)	
-		if(B==1) then
-			q(l) = (sum(z**4)/(sum(z**2)**2))*N
-		endif	
+	    ! calculation of the mean or the variance of the resamplings
+	    
+	    if (ics==0) then
+	        a(l) = sum(z)/float(N*nvol)
+	    endif
+	    
+	    if (ics==1) then 
+	        a(l) = sum(z**2)/float(N) - (sum(z)/float(N))**2
+	        a(l) = a(l)*float(nvol)
+	    endif
+	    
+	    if (ics==2) then 
+	        a(l) = (sum(z**4)/(sum(z**2)**2))*N
+	    endif
+	    
 	enddo
 	
-	media_dx = sum(u)/float(R)		!calcolo la media degli estimatori
-	media_x  = sum(a)/float(R)
-	
-	if(B==1) then
-		media_b = sum(q)/float(R)
-	endif
-	
+	media_x  = sum(a)/float(R)         ! mean
+	dx = 0
 	do i=1, R
-		dx1 = dx1 + (u(i) - media_dx)**2 !calcolo scarto quadratico
-		dx  = dx  + (a(i) - media_x )**2
-		if(B==1) then
-			db = db + (q(i) - media_b)**2
-		endif
+	    dx = dx + (a(i) - media_x )**2 ! standard deviation
 	enddo
 	
-	dx  = sqrt(dx/float(R - 1))		!prendo l'errore sul campione
-	dx1 = sqrt(dx1/float(R - 1))		!perchè  sono stai effettuati
-	if(B==1) then				!R ricampionamenti
-		db = sqrt(db/float(R - 1))	!quindi divido solo per R-1
-	endif					!e non R(R-1)
+	dx  = sqrt(dx/float(R - 1))		
+	! I take the error on the sample because we made R
+      ! resamples so I only divide by R-1 and not R(R-1)
 	
 	return
 	end
+
 	
 C=============================================================================
       function ran2()
