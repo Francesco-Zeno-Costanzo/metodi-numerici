@@ -24,9 +24,13 @@ H = 0
 
 ##Alcuni plot a titolo espositivo
 
-B = np.zeros(len(E15))
-for i in range(len(B)):
-    B[i] = 0.35 + i*(0.5-0.35)/len(B)
+param = np.loadtxt('input.txt', unpack=True)
+b_min = param[3]
+b_max = param[4]
+N = int(param[5])
+
+B = np.linspace(b_min, b_max, N)
+
 
 Title = f'Simulazione del modello di Ising 2D tramite Metropolis \n Campo magnetico esterno B={H}'
 xlabel = r'$\beta$ [u.a.]'   
